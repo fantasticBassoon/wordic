@@ -1,0 +1,387 @@
+<!doctype html>
+<html>
+  <head>
+    <title>Wordic Interpreter</title>
+    <style>
+        * {
+          box-sizing: border-box;
+          font-family: 'Roboto Mono', monospace;
+          font-size: 15pt;
+          line-height: 22px;
+          caret-color: white;
+        }
+        html, body {
+          margin: 0;
+          padding: 0;
+          background-color: #08080a;
+          color: white;
+          width: 100%;
+          height: 100%;
+          --blue: #03d3fc;
+          --green: #08ff63;
+          --red: #ff0038;
+          --yellow: #ffd700;
+          --grey: #949fa4;
+          --brown: #ffcb90;
+          --back: #2d2d2d;
+
+          --tool-height: 80px;
+        }
+
+        h1 {
+          height: 70px;
+          line-height: 50px;
+          font-size: 24pt !important;
+          text-align: center;
+          margin: 0;
+          padding: 20px 0 0;
+        }
+
+        div.workspace {
+          display: flex;
+          flex-direction: row;
+          gap: 5px;
+          width: calc(100% - 40px);
+          height: calc(100% - 110px);
+          margin: 20px;
+          position: relative;
+        }
+
+        div.editor {
+          width: 62%;
+          position: relative;
+          height: 100%;
+          border-radius: 10px;
+          margin: 0;
+          outline: none;
+          border: none;
+          resize: none;
+          color: #dddddd;
+          background-color: var(--back);
+          font-size: 15pt;
+          z-index: 1000;
+          overflow-x: auto;
+          overflow-y: auto;
+        }
+
+        .tools {
+          display: flex;
+          justify-content: left;
+          gap: 5px;
+          position: absolute;
+          top: 0;
+          left: 0;
+          height: var(--tool-height);
+          width: 100%;
+          z-index: 4;
+          background-color: var(--back);
+          overflow-x: auto;
+          box-shadow: 0px 0 5px black;
+        }
+
+        .ide {
+          position: absolute;
+          top: var(--tool-height);
+          left: 0;
+          width: 100%;
+          height: calc(100% - var(--tool-height));
+          overflow: auto;
+        }
+
+        .code {
+          position: absolute;
+          outline: none;
+          left: 50px;
+          top: 0;
+          width: fit-content;
+          height: fit-content;
+          field-sizing: content;
+          color: transparent; /* .code is overlayed by .coloured*/
+          background-color: transparent;
+          
+          z-index: 2;
+          white-space: pre;
+          margin: 0;
+          border: none;
+          padding-right: 20px;
+          padding-left: 10px;
+          padding-bottom: 100px;
+          padding-top: 0;
+          
+          min-width: calc(100% - 50px);
+          min-height: 100%;
+        }
+
+        .coloured {
+          position: absolute;
+          top: 0;
+          left: 50px;
+          width: fit-content;
+          height: fit-content;
+          
+          z-index: 1;
+          white-space: pre;
+          padding-right: 20px;
+          padding-left: 10px;
+          padding-bottom: 100px;
+          padding-top: 0;
+        }
+
+        .coloured>div {
+          display: block;
+          min-height: 22px;
+        }
+
+        .numbers {
+          position: sticky;
+          left: 0;
+          width: 50px;
+          height: fit-content;
+          z-index: 3;
+          background-color: var(--back);
+          opacity: 0.95;
+          text-align: right;
+          padding-right: 5px;
+          color: #ffffff66;
+          user-select: none;
+        }
+
+        div.slider {
+          position: relative;
+          width: 10px;
+          border-radius: 5px;
+          cursor: ew-resize;
+        }
+
+        div.slider-decor {
+          position: absolute;
+          top: 50%;
+          left: 25%;
+          width: 50%;
+          height: 100px;
+          transform: translateY(-50%);
+          background-color: var(--back);
+          border-radius: 9999px;
+        }
+
+        div.slider:hover>div {
+          background-color: white;
+        }
+
+        div.output {
+          height: 100%;
+          border-radius: 10px;
+          margin: 0;
+          outline: none;
+          border: none;
+          resize: none;
+          color: white;
+          background-color: var(--back);
+          font-size: 15pt;
+          z-index: 1000;
+          flex-grow: 1;
+          overflow: auto;
+        }
+
+        div.output-value {
+          padding: 15px;
+        }
+
+        div.output-value div.arr {
+          display: flex;
+          width: fit-content;
+          height: fit-content;
+          flex-direction: row;
+          background-color: #ffffff22;
+          border-radius: 10px;
+          padding: 5px;
+          gap: 5px;
+        }
+
+        div.output-value div.arritem {
+          width: fit-content;
+          height: fit-content;
+          background-color: var(--back);
+          border-radius: 5px;
+          padding: 2px;
+        }
+
+        div.arritem div.arr {
+          flex-direction: column !important;
+        }
+
+        button.square {
+          display: block;
+          background-color: transparent;
+          border-radius: 10px;
+          margin: 5px;
+          border: none;
+          min-width: fit-content;
+          height: 40px;
+          color: white;
+          cursor: pointer;
+          font-family: inherit;
+          padding: 0 10px;
+        }
+
+        button.square:hover {
+          background-color: #ffffff22;
+        }
+
+        .tx-a {
+          display: inline-block;
+          color: var(--blue);
+          z-index: 2;
+        }
+
+        .tx-s {
+          display: inline-block;
+          color: var(--green);
+          z-index: 2;
+        }
+
+        .tx-f {
+          display: inline-block;
+          color: var(--red);
+          z-index: 2;
+        }
+
+        .tx-d {
+          display: inline-block;
+          color: var(--yellow);
+          z-index: 2;
+        }
+
+        .tx-b {
+          display: inline-block;
+          color: var(--grey);
+          z-index: 2;
+        }
+
+        .tx-g {
+          display: inline-block;
+          color: var(--brown);
+          z-index: 2;
+        }
+    </style>
+  </head>
+  <body>
+    <h1 id="title">Wordic Interpreter</h1>
+    <div class="workspace">
+      <div class="editor">
+        <div id="tools" class="tools">
+          <button class="square">Identifiers</button>
+          <button class="square"><div class="tx-s">Commands</div></button>
+          <button class="square"><div class="tx-a">Operators</div></button>
+          <button class="square"><div class="tx-g">Constants</div></button>
+          <button class="square"><div class="tx-d">Constructs</div></button>
+          <button class="square"><div class="tx-f">Functions</div></button>
+          <button class="square"><div class="tx-b">Comments</div></button>
+        </div>
+        <div id="ide" class="ide">
+          <textarea id="code" class="code" contenteditable>new a zero</textarea>
+          <div id="coloured" class="coloured"></div>
+          <div id="numbers" class="numbers"></div>
+        </div>
+      </div>
+      <div class="slider">
+        <div class="slider-decor"></div>
+      </div>
+      <div class="output">
+        <button id="run" class="square">Run</button>
+        <div id="output-value" class="output-value"></div>
+      </div>
+    </div>
+    <script src="interpreter.js"></script>
+    <script>
+      function render(containertext) {
+        window.localStorage.setItem("saved", containertext);
+        let text = containertext + "\n";
+        const blue = ["add", "minus", "times", "over", "round", "div", "decimal", "mod", "exp", "asc", "equal", "up", "down", "not", "or", "and", "char", "num", "bool", "shift", "chr", "array", "wrap", "take", "replace", "steal", "length", "join", "firstof"];
+        const green = ["out", "new", "set"];
+        const red = ["function", "process", "calc", "run", "return"];
+        const yellow = ["repeat", "while", "count", "search", "if"];
+        const grey = ["note", "end"];
+        const brown = ["space", "newline", "tab", "alpha", "zero", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten", "nothing", "pi", "true", "case", "noted", "in"];
+
+        let line = "";
+        let word = "";
+        let include = false;
+        let lineCount = 0;
+        
+        let previousLineCount = document.getElementById("numbers").dataLines || 0;
+        let len = text.length;
+        let i = 0;
+        for (let char of text) {
+          if (char == " " || char == "\n" || i==len-1) {
+            if (blue.includes(word)) {
+              line += `<span class="tx-a">${word}</span>`
+            } else if (green.includes(word)) {
+              line += `<span class="tx-s">${word}</span>`
+            } else if (red.includes(word)) {
+              line += `<span class="tx-f">${word}</span>`
+            } else if (yellow.includes(word)) {
+              line += `<span class="tx-d">${word}</span>`
+            } else if (grey.includes(word)) {
+              line += `<span class="tx-b">${word}</span>`
+            } else if (brown.includes(word)) {
+              line += `<span class="tx-g">${word}</span>`
+            } else {
+              line += word;
+            }
+            if (char == " ") {
+              line += char;
+            }
+            word = "";
+          } else {
+            word += char;
+          }
+          if (char == "\n" || i==len-1) {
+            lineCount++;
+            if (document.getElementById(`line-${lineCount}`)) {
+              if (document.getElementById(`line-${lineCount}`).innerHTML != line) {
+                document.getElementById(`line-${lineCount}`).innerHTML = line;
+              }
+            } else {
+              document.getElementById("coloured").innerHTML += `<div id="line-${lineCount}">${line}</div>`;
+            }
+            if (lineCount > previousLineCount) {
+              document.getElementById("numbers").innerHTML += `<div id="number-${lineCount}">${lineCount}</div>`;
+            }
+            line = "";
+          }
+          i++;
+        }
+
+        document.getElementById("numbers").dataLines = lineCount;
+        while (previousLineCount > lineCount) {
+          document.getElementById(`number-${previousLineCount}`).remove();
+          document.getElementById(`line-${previousLineCount}`).remove();
+          previousLineCount--;
+        }
+        document.getElementById("numbers").dataLines = lineCount;
+
+        if (containertext == "") {
+          document.getElementById("coloured").innerHTML = `<div id="line-1"><span class="tx-b">Start typing here</span></div>`;
+        }
+      }
+
+      document.getElementById("code").addEventListener("input", (function() {
+        render(this.value);
+      }));
+
+      document.getElementById("run").addEventListener("click", (function() {
+        document.getElementById("output-value").innerHTML = run(document.getElementById("code").value+"\n");
+      }));
+
+      if (window.localStorage.getItem("saved")) {
+        let stored = window.localStorage.getItem("saved");
+        document.getElementById("code").value = stored;
+        render(stored);
+      } else {
+        render(document.getElementById("code").value);
+      }
+      
+    </script>
+  </body>
+</html>
