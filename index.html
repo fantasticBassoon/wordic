@@ -22,7 +22,7 @@
           --red: #ff0038;
           --yellow: #ffd700;
           --grey: #949fa4;
-          --brown: #ffcb90;
+          --purple: #c490ff;
           --back: #2d2d2d;
 
           --tool-height: 50px;
@@ -48,7 +48,9 @@
         }
 
         div.editor {
-          width: 62%;
+          width: 0;
+          flex-basis: 0;
+
           position: relative;
           height: 100%;
           border-radius: 10px;
@@ -60,6 +62,7 @@
           background-color: var(--back);
           font-size: 15pt;
           z-index: 1000;
+          flex-grow: 1.6;
           overflow-x: auto;
           overflow-y: auto;
         }
@@ -173,6 +176,9 @@
         }
 
         div.output {
+          width: 0;
+          flex-basis: 0;
+
           height: 100%;
           border-radius: 10px;
           margin: 0;
@@ -262,9 +268,9 @@
           z-index: 2;
         }
 
-        .tx-g {
+        .tx-h {
           display: inline-block;
-          color: var(--brown);
+          color: var(--purple);
           z-index: 2;
         }
     </style>
@@ -277,10 +283,10 @@
           <button class="square">Identifiers</button>
           <button class="square"><div class="tx-s">Commands</div></button>
           <button class="square"><div class="tx-a">Operators</div></button>
-          <button class="square"><div class="tx-g">Constants</div></button>
+          <button class="square"><div class="tx-h">Constants</div></button>
           <button class="square"><div class="tx-d">Constructs</div></button>
           <button class="square"><div class="tx-f">Functions</div></button>
-          <button class="square"><div class="tx-b">Comments</div></button>
+          <button class="square"><div class="tx-g">Comments</div></button>
         </div>
         <div id="ide" class="ide">
           <textarea id="code" class="code" contenteditable>new a zero</textarea>
@@ -303,10 +309,10 @@
         let text = containertext + "\n";
         const blue = ["add", "minus", "times", "over", "round", "div", "decimal", "mod", "exp", "asc", "equal", "up", "down", "not", "or", "and", "char", "num", "bool", "shift", "chr", "array", "wrap", "take", "replace", "steal", "length", "join", "firstof"];
         const green = ["out", "new", "set"];
-        const red = ["function", "process", "calc", "run", "return"];
+        const red = ["function", "process", "make", "run", "return"];
         const yellow = ["repeat", "while", "count", "search", "if"];
         const grey = ["note", "end"];
-        const brown = ["space", "newline", "tab", "alpha", "zero", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten", "nothing", "pi", "true", "case", "noted", "in"];
+        const purple = ["space", "newline", "tab", "alpha", "zero", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten", "nothing", "pi", "true", "case", "noted", "made"];
 
         let line = "";
         let word = "";
@@ -328,8 +334,8 @@
               line += `<span class="tx-d">${word}</span>`
             } else if (grey.includes(word)) {
               line += `<span class="tx-b">${word}</span>`
-            } else if (brown.includes(word)) {
-              line += `<span class="tx-g">${word}</span>`
+            } else if (purple.includes(word)) {
+              line += `<span class="tx-h">${word}</span>`
             } else {
               line += word;
             }
@@ -375,6 +381,7 @@
       }));
 
       document.getElementById("run").addEventListener("click", (function() {
+        document.getElementById("output-value").innerHTML = "";
         document.getElementById("output-value").innerHTML = run(document.getElementById("code").value+"\n");
       }));
 

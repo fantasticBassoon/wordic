@@ -283,13 +283,13 @@ const commands = {
             let newVariables = variables;
             let output = "";
             if (args[0] == null) {
-                output = `<span class="tx-g">nothing</span>`;
+                output = `<span class="tx-h">nothing</span>`;
             } else if (typeof args[0] == "number") {
                 output = String(args[0]);
             } else if (typeof args[0] == "string") { // char
                 output = args[0];
             } else if (typeof args[0] == "boolean") {
-                output = args[0] ? `<span class="tx-g">true</span>` : `<span class="tx-a">not</span> <span class="tx-g">true</span>`;
+                output = args[0] ? `<span class="tx-h">true</span>` : `<span class="tx-a">not</span> <span class="tx-h">true</span>`;
             } else {
                 for (let item of args[0]) {
                     output += this.run([item], variables, stack, line, functions, false)[1];
@@ -304,32 +304,34 @@ const commands = {
         evaluatingInputs: [false, false],
         run: function(args, variables, stack, line, functions) {
             let newVariables = variables;
-            functions[args[0]] = line+1;
+            functions[args[0]] = [line+1, args[1]]; // Store line number of function body and parameter name
             return [newVariables, "", stack, line+1, functions, true]; // true - skip executing body of function before call
         },
     },
-    "calc": {
-        inputs: 1,
-        evaluatingInputs: [true],
+    "make": {
+        inputs: 2,
+        evaluatingInputs: [false, true],
         run: function(args, variables, stack, line, functions) {
             let newVariables = {}; // No accessible variables outside function
-            let newLine = functions[args[0]];
+            let newLine = functions[args[0]][0]; // Get line number of function body
             let newStack = structuredClone(stack);
             newStack.push({
                 call: line,
                 variables: variables,
             })
+            newVariables[functions[args[0]][1]] = args[1]; // Store argument in function's parameter variable
             return [newVariables, "", newStack, newLine, functions, false];
         },
     },
     "return": {
-        inputs: 0,
-        evaluatingInputs: [],
+        inputs: 1,
+        evaluatingInputs: [true],
         run: function(args, variables, stack, line, functions) {
             let lastCall = stack[stack.length-1];
-            let newStack = stack.slice(0, -1);
+            let newStack = stack.slice(0, -1); // Remove last call from stack
             let newLine = lastCall.call+1;
             let newVariables = lastCall.variables; // Not accessible outside function - scope
+            newVariables["made"] = args[0]; // Return value stored in special variable "made"
             return [newVariables, "", newStack, newLine, functions, false];
         },
     },
@@ -356,7 +358,7 @@ const constants = {
     "true": function(){return true},
     "case": function(){return 26},
     "noted": function(){return variables["noted"]},
-    "in": function() {return null; }, // Improve this please!
+    "made": function(){return variables["made"]},
 }
 
 function parseWord(word, variables) {
@@ -378,7 +380,7 @@ function parseWord(word, variables) {
 }
 
 // Recursive
-function evaluate(arg, variables) {
+function evaluate(arg, variables, functions) {
     // Identifier -> identifier
     // Operator+value -> value
     // Value -> value
@@ -387,7 +389,8 @@ function evaluate(arg, variables) {
 
     if (arg.length == 1) {
         // Return the single value
-        return parseWord(arg[0], variables);
+        let parsed = parseWord(arg[0], variables);
+        return parsed;
     } else {
         let args = [];
         console.log("Breakdown:");
@@ -408,7 +411,7 @@ function evaluate(arg, variables) {
                         if (expectedArgs < initialArgs) {
                             // As soon as one whole argument is ended, store in args
                             initialArgs = expectedArgs;
-                            args.push(evaluate(allArgsBefore, variables));
+                            args.push(evaluate(allArgsBefore, variables, functions));
                             allArgsBefore = [];
                         }
                     }
@@ -436,7 +439,7 @@ function runLine(line, variables, stack, functions, skipFlag, lineNumber) {
     let newSkipFlag = skipFlag;
     let newLine = lineNumber;
 
-    if (skipFlag == 0 && principalCommand in commands) {
+    if (newSkipFlag == 0 && principalCommand in commands) {
         let command = commands[principalCommand];
 
         // Format arguments to principal command (first of line)
@@ -456,7 +459,7 @@ function runLine(line, variables, stack, functions, skipFlag, lineNumber) {
                         initialArgs = expectedArgs;
                         if (command.evaluatingInputs[args.length] == true) {
                             // If the argument is allowed to be evaluated by the command details
-                            args.push(evaluate(allArgsBefore, variables)); // Evaluate into the *real* args list
+                            args.push(evaluate(allArgsBefore, variables, functions)); // Evaluate into the *real* args list
                             allArgsBefore = [];
                         } else {
                             args.push(allArgsBefore[0]);
@@ -509,7 +512,6 @@ function runLine(line, variables, stack, functions, skipFlag, lineNumber) {
 }
 
 function run(wordic) {
-
     let output = "";
     let len = wordic.length;
     let word = "";
@@ -534,8 +536,8 @@ function run(wordic) {
 
     let lineNumber = 0;
     let stack = [];
-    let variables = {noted: [],}; // Reserved variable name for comments
-    let functions = {}; // Table of line numbers of functions
+    let variables = {noted: null, made: null,}; // Reserved variable name for comments
+    let functions = {}; // Table of line numbers of functions and their parameter names
     let skipFlag = 0;
     let result;
     while (lineNumber < code.length) {
