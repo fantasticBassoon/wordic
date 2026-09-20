@@ -304,7 +304,7 @@ const commands = {
         evaluatingInputs: [false, false],
         run: function(args, variables, stack, line, functions) {
             let newVariables = variables;
-            functions[args[0]] = line;
+            functions[args[0]] = line+1;
             return [newVariables, "", stack, line+1, functions, true]; // true - skip executing body of function before call
         },
     },
@@ -317,7 +317,7 @@ const commands = {
             let newStack = structuredClone(stack);
             newStack.push({
                 call: line,
-                hiddenvariables: variables,
+                variables: variables,
             })
             return [newVariables, "", newStack, newLine, functions, false];
         },
@@ -327,8 +327,8 @@ const commands = {
         evaluatingInputs: [],
         run: function(args, variables, stack, line, functions) {
             let lastCall = stack[stack.length-1];
-            let newStack = stack.pop();
-            let newLine = lastCall.call;
+            let newStack = stack.slice(0, -1);
+            let newLine = lastCall.call+1;
             let newVariables = lastCall.variables; // Not accessible outside function - scope
             return [newVariables, "", newStack, newLine, functions, false];
         },
@@ -503,6 +503,7 @@ function runLine(line, variables, stack, functions, skipFlag, lineNumber) {
         newLine = lineNumber+1;
     } else {
         // Error command unrecognised
+        newLine = lineNumber+1;
     }
     return { variables: newVariables, output, newLine, newSkipFlag, newStack, newFunctions };
 }
@@ -537,7 +538,7 @@ function run(wordic) {
     let functions = {}; // Table of line numbers of functions
     let skipFlag = 0;
     let result;
-    while (lineNumber != code.length) {
+    while (lineNumber < code.length) {
         line = code[lineNumber];
         console.log("LN:"+lineNumber);
         console.log("LINE:"+line);
@@ -547,8 +548,10 @@ function run(wordic) {
         output += result.output;
         lineNumber = result.newLine;
         skipFlag = result.newSkipFlag;
-        stack = result.stack;
+        stack = result.newStack;
         functions = result.newFunctions;
     }
+    console.log("LN:"+lineNumber);
+    console.log("LINE: END OF CODE");
     return output;
 }
