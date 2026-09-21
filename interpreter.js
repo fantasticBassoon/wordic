@@ -335,6 +335,19 @@ const commands = {
             return [newVariables, "", newStack, newLine, functions, false];
         },
     },
+    "if": {
+        inputs: 1,
+        evaluatingInputs: [true],
+        run: function(args, variables, stack, line, functions) {
+            let newVariables = variables;
+            newVariables["else"] = !args[0]; // Store whether an else statement should be executed in a special variable called "else"
+            if (args[0]) { // The *real* if statement
+                return [newVariables, "", stack, line+1, functions, false]; // Do not skip
+            } else {
+                return [newVariables, "", stack, line+1, functions, true]; // Skip executing body of if statement
+            }
+        },
+    },
 }
 
 const constants = {
@@ -359,6 +372,7 @@ const constants = {
     "case": function(){return 26},
     "noted": function(){return variables["noted"]},
     "made": function(){return variables["made"]},
+    "else": function(){return variables["else"]},
 }
 
 function parseWord(word, variables) {
@@ -536,7 +550,7 @@ function run(wordic) {
 
     let lineNumber = 0;
     let stack = [];
-    let variables = {noted: null, made: null,}; // Reserved variable name for comments
+    let variables = {noted: null, made: null, else: false,}; // Reserved variable name for comments, function return values, and if statements
     let functions = {}; // Table of line numbers of functions and their parameter names
     let skipFlag = 0;
     let result;

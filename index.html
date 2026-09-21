@@ -100,7 +100,7 @@
           width: fit-content;
           height: fit-content;
           field-sizing: content;
-          color: transparent; /* .code is overlayed by .coloured*/
+          color: transparent; /* transparent .code overlays .coloured*/
           background-color: transparent;
           
           z-index: 2;
@@ -286,7 +286,7 @@
           <button class="square"><div class="tx-h">Constants</div></button>
           <button class="square"><div class="tx-d">Constructs</div></button>
           <button class="square"><div class="tx-f">Functions</div></button>
-          <button class="square"><div class="tx-g">Comments</div></button>
+          <button class="square"><div class="tx-b">Comments</div></button>
         </div>
         <div id="ide" class="ide">
           <textarea id="code" class="code" contenteditable>new a zero</textarea>
@@ -312,7 +312,7 @@
         const red = ["function", "process", "make", "run", "return"];
         const yellow = ["repeat", "while", "count", "search", "if"];
         const grey = ["note", "end"];
-        const purple = ["space", "newline", "tab", "alpha", "zero", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten", "nothing", "pi", "true", "case", "noted", "made"];
+        const purple = ["space", "newline", "tab", "alpha", "zero", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten", "nothing", "pi", "true", "case", "noted", "made", "else"];
 
         let line = "";
         let word = "";
