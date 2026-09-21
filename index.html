@@ -9,6 +9,7 @@
           font-size: 15pt;
           line-height: 22px;
           caret-color: white;
+          scrollbar-width: none;
         }
         html, body {
           margin: 0;
@@ -176,6 +177,7 @@
         }
 
         div.output {
+          position: relative;
           width: 0;
           flex-basis: 0;
 
@@ -194,30 +196,15 @@
         }
 
         div.output-value {
+          position: absolute;
+          top: var(--tool-height);
+          left: 0;
+          width: 100%;
+          height: calc(100% - var(--tool-height));
+          overflow: auto;
           padding: 15px;
-        }
-
-        div.output-value div.arr {
-          display: flex;
-          width: fit-content;
-          height: fit-content;
-          flex-direction: row;
-          background-color: #ffffff22;
-          border-radius: 10px;
-          padding: 5px;
-          gap: 5px;
-        }
-
-        div.output-value div.arritem {
-          width: fit-content;
-          height: fit-content;
-          background-color: var(--back);
-          border-radius: 5px;
-          padding: 2px;
-        }
-
-        div.arritem div.arr {
-          flex-direction: column !important;
+          padding-top: 0;
+          white-space: pre;
         }
 
         button.square {
@@ -298,7 +285,12 @@
         <div class="slider-decor"></div>
       </div>
       <div class="output">
-        <button id="run" class="square">Run</button>
+        <div id="outputtools" class="tools">
+          <button id="run" class="square"><span class="tx-s">Run</span></button>
+          <button id="stop" class="square"><span class="tx-f">Stop</span></button>
+          <button id="step" class="square"><span class="tx-d">Step</span></button>
+          <button id="safe" class="square"><span class="tx-h">Protected Execution</span></button>
+        </div>
         <div id="output-value" class="output-value"></div>
       </div>
     </div>
