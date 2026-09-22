@@ -162,7 +162,26 @@
           transform: translateX(50%) translateY(-50%) scale(0.5);
           background-color: #ffffff;
           clip-path: polygon(0 0, 100% 50%, 0 100%);
+          z-index: 6;
+          transition: top 0.2s;
+        }
+
+        div#callers {
+          position: absolute;
+          right: 0;
+          width: 11px;
+          height: 100%;
           z-index: 5;
+        }
+
+        div.caller {
+          position: absolute;
+          right: 0;
+          width: 22px;
+          height: 22px;
+          transform: translateX(50%) scale(0.5);
+          background-color: var(--red);
+          border-radius: 100%;
         }
 
         div.slider {
@@ -289,7 +308,7 @@
         <div id="ide" class="ide">
           <textarea id="code" class="code" contenteditable>new a zero</textarea>
           <div id="coloured" class="coloured"></div>
-          <div id="numbers" class="numbers"><div id="pointer"></div></div>
+          <div id="numbers" class="numbers"><div id="pointer"></div><div id="callers"></div></div>
         </div>
       </div>
       <div class="slider">

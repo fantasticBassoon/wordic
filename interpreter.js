@@ -619,6 +619,10 @@ function step() {
     functions = result.newFunctions;
     document.getElementById("output-value").innerHTML += result.output;
     document.getElementById("pointer").style.top = (lineNumber*22)+"px";
+    document.getElementById("callers").innerHTML = "";
+    for (let call of stack) {
+        document.getElementById("callers").innerHTML += `<div class="caller" style="top: ${call.call*22}px;"></div>`;
+    }
     return true;
 }
 
