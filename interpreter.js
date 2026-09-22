@@ -264,7 +264,7 @@ const commands = {
         run: function(args, variables, stack, line, functions) {
             let newVariables = variables;
             newVariables[args[0]] = args[1];
-            return [newVariables, "", stack, line+1, functions, false];
+            return [newVariables, "", stack, line+1, functions, "noskip"];
         },
     },
     "set": {
@@ -273,7 +273,7 @@ const commands = {
         run: function(args, variables, stack, line, functions) {
             let newVariables = variables;
             newVariables[args[0]] = args[1];
-            return [newVariables, "", stack, line+1, functions, false];
+            return [newVariables, "", stack, line+1, functions, "noskip"];
         },
     },
     "out": {
@@ -296,7 +296,7 @@ const commands = {
                 }
             }
             output += newline ? "<br>" : "";
-            return [newVariables, output, stack, line+1, functions, false];
+            return [newVariables, output, stack, line+1, functions, "noskip"];
         },
     },
     "function": {
@@ -305,7 +305,7 @@ const commands = {
         run: function(args, variables, stack, line, functions) {
             let newVariables = variables;
             functions[args[0]] = [line+1, args[1]]; // Store line number of function body and parameter name
-            return [newVariables, "", stack, line+1, functions, true]; // true - skip executing body of function before call
+            return [newVariables, "", stack, line+1, functions, "skipall"]; // "skipall" - skip executing body of function and the return command
         },
     },
     "make": {
@@ -321,7 +321,7 @@ const commands = {
                 type: "function",
             })
             newVariables[functions[args[0]][1]] = args[1]; // Store argument in function's parameter variable
-            return [newVariables, "", newStack, newLine, functions, false];
+            return [newVariables, "", newStack, newLine, functions, "noskip"];
         },
     },
     "return": {
@@ -333,7 +333,7 @@ const commands = {
             let newLine = lastCall.call+1;
             let newVariables = lastCall.variables; // Not accessible outside function - scope
             newVariables["made"] = args[0]; // Return value stored in special variable "made"
-            return [newVariables, "", newStack, newLine, functions, false];
+            return [newVariables, "", newStack, newLine, functions, "noskip"];
         },
     },
     "if": {
@@ -349,9 +349,27 @@ const commands = {
                 type: "if",
             });
             if (args[0]) { // The *real* if statement
-                return [newVariables, "", newStack, line+1, functions, false]; // Do not skip
+                return [newVariables, "", newStack, line+1, functions, "noskip"]; // Do not skip
             } else {
-                return [newVariables, "", newStack, line+1, functions, true]; // Skip executing body of if statement
+                return [newVariables, "", newStack, line+1, functions, "skipexceptlast"]; // Skip executing body of if statement but run the 'end' command
+            }
+        },
+    },
+    "while": {
+        inputs: 1,
+        evaluatingInputs: [true],
+        run: function(args, variables, stack, line, functions) {
+            let newVariables = variables;
+            let newStack = structuredClone(stack);
+            if (args[0]) {
+                newStack.push({
+                    call: line,
+                    variables: variables,
+                    type: "while",
+                });
+                return [newVariables, "", newStack, line+1, functions, "noskip"]; // Do not skip
+            } else {
+                return [newVariables, "", newStack, line+1, functions, "skipall"]; // Skip executing body of while loop including end command. End not needed since the stack is not added to
             }
         },
     },
@@ -363,6 +381,7 @@ const commands = {
             console.log("End statement reached.");
             let lastCall = stack[stack.length-1];
             let newStack = stack.slice(0, -1);
+            let newLine = line+1;
             if (lastCall.type == "if") {
                 // END IF
                 for (let key in lastCall.variables) {
@@ -371,8 +390,18 @@ const commands = {
                     }
                 }
                 console.log("End of if statement reached.");
+            } else if (lastCall.type == "while") {
+                // END WHILE
+                for (let key in lastCall.variables) {
+                    if (key in newVariables) {
+                        newVariables[key] = lastCall.variables[key]; // Scope - variables already declared before are updated inside the while loop
+                    }
+                }
+                console.log("End of while loop reached.");
+                // Go back to the start, and let the while command check the condition again (and skip if needed)
+                newLine = lastCall.call;
             }
-            return [newVariables, "", newStack, line+1, functions, true]; // Skip executing body of if statement
+            return [newVariables, "", newStack, newLine, functions, "noskip"]; // Do not skip executing body
         },
     },
 }
@@ -471,16 +500,27 @@ function evaluate(arg, variables, functions) {
     }
 }
 
-function runLine(line, variables, stack, functions, skipFlag, lineNumber) {
+function runLine(line, variables, stack, functions, skipFlag, skipType, lineNumber) {
     let newVariables = structuredClone(variables);
     let principalCommand = line[0];
     let output = "";
     let newStack = structuredClone(stack);
     let newFunctions = structuredClone(functions);
     let newSkipFlag = skipFlag;
+    let newSkipType = skipType;
     let newLine = lineNumber;
 
-    if (newSkipFlag == 0 && principalCommand in commands) {
+    if (newSkipFlag != 0) {
+        if (["end", "return"].includes(principalCommand)) {
+            newSkipFlag--;
+        } else if (["function", "process", "repeat", "while", "count", "search", "if"].includes(principalCommand)) {
+            newSkipFlag++;
+        }
+        newLine = lineNumber+1;
+    }
+
+    // If skipFlag is now 0, then the line can be executed. Otherwise, it is skipped.
+    if (newSkipFlag == 0 && skipType != "skipall" && principalCommand in commands) { // ie. not skipall: noskip or skipexceptlast
         let command = commands[principalCommand];
 
         // Format arguments to principal command (first of line)
@@ -521,8 +561,10 @@ function runLine(line, variables, stack, functions, skipFlag, lineNumber) {
         newStack = result[2];
         newLine = result[3];
         newFunctions = result[4];
-        newSkipFlag = result[5] ? 1 : 0;
-    } else if (newSkipFlag == 0 && principalCommand == "note") {
+        newSkipFlag = ["skipall", "skipexceptlast"].includes(result[5]) ? 1 : 0;
+        newSkipType = result[5];
+    } else if (newSkipFlag == 0 && skipType != "skipall" && principalCommand == "note") {
+        // Note is a special command - it is not contained in the commands object, since it is a command.
         let note = [];
         let i = 0;
         for (let word of line) {
@@ -538,18 +580,14 @@ function runLine(line, variables, stack, functions, skipFlag, lineNumber) {
         note.pop(); // Remove extra space
         newLine = lineNumber+1;
         newVariables["noted"] = note; // Store a note in a special variable called "noted" (it's a reserved name anyway)
-    } else if (newSkipFlag != 0) {
-        if (["end", "return"].includes(principalCommand)) {
-            newSkipFlag--;
-        } else if (["function", "process", "repeat", "while", "count", "search", "if"].includes(principalCommand)) {
-            newSkipFlag++;
-        }
-        newLine = lineNumber+1;
     } else {
         // Error command unrecognised
         newLine = lineNumber+1;
     }
-    return { variables: newVariables, output, newLine, newSkipFlag, newStack, newFunctions };
+    if (newSkipFlag == 0) {
+        newSkipType = "noskip";
+    }
+    return { variables: newVariables, output, newLine, newSkipFlag, newStack, newFunctions, newSkipType };
 }
 
 let output = "";
@@ -560,6 +598,7 @@ let stack = [];
 let variables = {noted: null, made: null, else: false,}; // Reserved variable name for comments, function return values, and if statements
 let functions = {}; // Table of line numbers of functions and their parameter names
 let skipFlag = 0;
+let skipType = "noskip";
 let result;
 
 function beginStep(wordic) {
@@ -604,20 +643,26 @@ function step() {
         return false;
     }
 
-    // Run line
-    line = code[lineNumber];
-    console.log("LN:"+lineNumber);
-    console.log("LINE:"+line);
-    result = runLine(line, variables, stack, functions, skipFlag, lineNumber);
+    let initial = true;
+    while (initial || skipFlag > 0) { // LineNumber < code.length check is as a safeguard in case code blocks were not closed
+        // Run line
+        line = code[lineNumber];
+        console.log("LN:"+lineNumber);
+        console.log("LINE:"+line);
+        result = runLine(line, variables, stack, functions, skipFlag, skipType, lineNumber);
 
-    // Update interpreter state
-    variables = result.variables;
-    output += result.output;
-    lineNumber = result.newLine;
-    skipFlag = result.newSkipFlag;
-    stack = result.newStack;
-    functions = result.newFunctions;
-    document.getElementById("output-value").innerHTML += result.output;
+        // Update interpreter state
+        variables = result.variables;
+        output += result.output;
+        lineNumber = result.newLine;
+        skipFlag = result.newSkipFlag;
+        skipType = result.newSkipType;
+        stack = result.newStack;
+        functions = result.newFunctions;
+
+        initial = false;
+        document.getElementById("output-value").innerHTML += result.output;
+    }
     document.getElementById("pointer").style.top = (lineNumber*22)+"px";
     document.getElementById("callers").innerHTML = "";
     for (let call of stack) {
@@ -632,5 +677,5 @@ function run(wordic) {
     while (cont) {
         cont = step();
     }
-    return output;
+    document.getElementById("callers").innerHTML += "";
 }
