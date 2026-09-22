@@ -154,6 +154,17 @@
           user-select: none;
         }
 
+        div#pointer {
+          position: absolute;
+          right: 0;
+          width: 11px;
+          height: 22px;
+          transform: translateX(50%) translateY(-50%) scale(0.5);
+          background-color: #ffffff;
+          clip-path: polygon(0 0, 100% 50%, 0 100%);
+          z-index: 5;
+        }
+
         div.slider {
           position: relative;
           width: 10px;
@@ -278,7 +289,7 @@
         <div id="ide" class="ide">
           <textarea id="code" class="code" contenteditable>new a zero</textarea>
           <div id="coloured" class="coloured"></div>
-          <div id="numbers" class="numbers"></div>
+          <div id="numbers" class="numbers"><div id="pointer"></div></div>
         </div>
       </div>
       <div class="slider">
@@ -288,8 +299,8 @@
         <div id="outputtools" class="tools">
           <button id="run" class="square"><span class="tx-s">Run</span></button>
           <button id="stop" class="square"><span class="tx-f">Stop</span></button>
+          <button id="debug" class="square"><span class="tx-d">Debug</span></button>
           <button id="step" class="square"><span class="tx-d">Step</span></button>
-          <button id="safe" class="square"><span class="tx-h">Protected Execution</span></button>
         </div>
         <div id="output-value" class="output-value"></div>
       </div>
@@ -368,13 +379,22 @@
         }
       }
 
+      // Code colouring
       document.getElementById("code").addEventListener("input", (function() {
         render(this.value);
       }));
 
+      // Run button
       document.getElementById("run").addEventListener("click", (function() {
-        document.getElementById("output-value").innerHTML = "";
-        document.getElementById("output-value").innerHTML = run(document.getElementById("code").value+"\n");
+        run(document.getElementById("code").value+"\n");
+      }));
+
+      // Step button
+      document.getElementById("debug").addEventListener("click", (function() {
+        beginStep(document.getElementById("code").value+"\n");
+      }));
+      document.getElementById("step").addEventListener("click", (function() {
+        step();
       }));
 
       if (window.localStorage.getItem("saved")) {

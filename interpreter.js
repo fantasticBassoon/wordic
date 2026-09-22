@@ -318,6 +318,7 @@ const commands = {
             newStack.push({
                 call: line,
                 variables: variables,
+                type: "function",
             })
             newVariables[functions[args[0]][1]] = args[1]; // Store argument in function's parameter variable
             return [newVariables, "", newStack, newLine, functions, false];
@@ -341,11 +342,37 @@ const commands = {
         run: function(args, variables, stack, line, functions) {
             let newVariables = variables;
             newVariables["else"] = !args[0]; // Store whether an else statement should be executed in a special variable called "else"
+            let newStack = structuredClone(stack);
+            newStack.push({
+                call: line,
+                variables: variables,
+                type: "if",
+            });
             if (args[0]) { // The *real* if statement
-                return [newVariables, "", stack, line+1, functions, false]; // Do not skip
+                return [newVariables, "", newStack, line+1, functions, false]; // Do not skip
             } else {
-                return [newVariables, "", stack, line+1, functions, true]; // Skip executing body of if statement
+                return [newVariables, "", newStack, line+1, functions, true]; // Skip executing body of if statement
             }
+        },
+    },
+    "end": {
+        inputs: 0,
+        evaluatingInputs: [],
+        run: function(args, variables, stack, line, functions) {
+            let newVariables = variables;
+            console.log("End statement reached.");
+            let lastCall = stack[stack.length-1];
+            let newStack = stack.slice(0, -1);
+            if (lastCall.type == "if") {
+                // END IF
+                for (let key in lastCall.variables) {
+                    if (key in newVariables) {
+                        newVariables[key] = lastCall.variables[key]; // Scope - variables already declared before are updated inside the if statement
+                    }
+                }
+                console.log("End of if statement reached.");
+            }
+            return [newVariables, "", newStack, line+1, functions, true]; // Skip executing body of if statement
         },
     },
 }
@@ -525,13 +552,24 @@ function runLine(line, variables, stack, functions, skipFlag, lineNumber) {
     return { variables: newVariables, output, newLine, newSkipFlag, newStack, newFunctions };
 }
 
-function run(wordic) {
-    let output = "";
+let output = "";
+let code = [];
+
+let lineNumber = 0;
+let stack = [];
+let variables = {noted: null, made: null, else: false,}; // Reserved variable name for comments, function return values, and if statements
+let functions = {}; // Table of line numbers of functions and their parameter names
+let skipFlag = 0;
+let result;
+
+function beginStep(wordic) {
+    // Convert the code into a 2D array of lines and words
+    output = "";
     let len = wordic.length;
     let word = "";
     let line = [];
     let i = 0;
-    let code = []
+    code = []
     for (let char of wordic) {
         if (char == " " || char == "\n" || i==len-1) {
             line.push(word);
@@ -547,27 +585,48 @@ function run(wordic) {
         i++;
     }
 
+    // Initialise the interpreter state
+    lineNumber = 0;
+    stack = [];
+    variables = {noted: null, made: null, else: false,}; // Reserved variable name for comments, function return values, and if statements
+    functions = {}; // Table of line numbers of functions and their parameter names
+    skipFlag = 0;
+    result;
+    document.getElementById("output-value").innerHTML = "";
+    document.getElementById("pointer").style.top = (lineNumber*22)+"px";
+}
 
-    let lineNumber = 0;
-    let stack = [];
-    let variables = {noted: null, made: null, else: false,}; // Reserved variable name for comments, function return values, and if statements
-    let functions = {}; // Table of line numbers of functions and their parameter names
-    let skipFlag = 0;
-    let result;
-    while (lineNumber < code.length) {
-        line = code[lineNumber];
+function step() {
+    // Check for end of code
+    if (lineNumber >= code.length) {
         console.log("LN:"+lineNumber);
-        console.log("LINE:"+line);
-        result = runLine(line, variables, stack, functions, skipFlag, lineNumber);
-
-        variables = result.variables;
-        output += result.output;
-        lineNumber = result.newLine;
-        skipFlag = result.newSkipFlag;
-        stack = result.newStack;
-        functions = result.newFunctions;
+        console.log("LINE: END OF CODE");
+        return false;
     }
+
+    // Run line
+    line = code[lineNumber];
     console.log("LN:"+lineNumber);
-    console.log("LINE: END OF CODE");
+    console.log("LINE:"+line);
+    result = runLine(line, variables, stack, functions, skipFlag, lineNumber);
+
+    // Update interpreter state
+    variables = result.variables;
+    output += result.output;
+    lineNumber = result.newLine;
+    skipFlag = result.newSkipFlag;
+    stack = result.newStack;
+    functions = result.newFunctions;
+    document.getElementById("output-value").innerHTML += result.output;
+    document.getElementById("pointer").style.top = (lineNumber*22)+"px";
+    return true;
+}
+
+function run(wordic) {
+    beginStep(wordic);
+    let cont = true;
+    while (cont) {
+        cont = step();
+    }
     return output;
 }
